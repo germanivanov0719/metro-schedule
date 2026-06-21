@@ -1,65 +1,87 @@
 #!/usr/bin/env python3
-"""Иконки PWA: тёмный роундель с «М» и кольцом из цветов линий метро."""
-import math
-from PIL import Image, ImageDraw, ImageFont
+# Иконки приложения из настоящего логотипа Петербургского метрополитена
+# (Spb_metro_logo.svg). Логотип перекрашивается в белый на фирменном красном.
+# SVG рендерится встроенным флэттенером путей (без внешних зависимостей).
+import re
+from PIL import Image, ImageDraw
 
-LINE_COLORS = ["#D6083B", "#0072BA", "#009A49", "#EA7125", "#702082", "#B5651D"]
-NAVY = (10, 22, 40)        # тёмно-синий фон
-NAVY2 = (16, 34, 58)
-WHITE = (238, 242, 247)
+RED = (209, 29, 55)
+WHITE = (255, 255, 255)
 
-def font(sz):
-    for p in ["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]:
-        try:
-            return ImageFont.truetype(p, sz)
-        except Exception:
-            pass
-    return ImageFont.load_default()
+SVG = open('Spb_metro_logo.svg', encoding='utf-8').read()
+PATH = re.search(r'\sd="([^"]+)"', SVG).group(1)
+vb = re.search(r'viewBox="([^"]+)"', SVG).group(1).split()
+VBW, VBH = float(vb[2]), float(vb[3])
+TOKS = re.findall(r'[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?', PATH)
 
-def hex2rgb(h):
-    h = h.lstrip("#")
-    return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+def _bez(p0, p1, p2, p3, n=48):
+    out = []
+    for k in range(1, n + 1):
+        t = k / n; u = 1 - t
+        out.append((u*u*u*p0[0] + 3*u*u*t*p1[0] + 3*u*t*t*p2[0] + t*t*t*p3[0],
+                    u*u*u*p0[1] + 3*u*u*t*p1[1] + 3*u*t*t*p2[1] + t*t*t*p3[1]))
+    return out
 
-def make(size, maskable=False, ring=True):
-    S = size * 4  # суперсэмплинг
-    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    pad = 0 if maskable else int(S * 0.06)
-    # фоновый круг с лёгким вертикальным градиентом
-    bg = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    bgd = ImageDraw.Draw(bg)
-    for y in range(S):
-        t = y / S
-        c = tuple(int(NAVY[i] * (1 - t) + NAVY2[i] * t) for i in range(3))
-        bgd.line([(0, y), (S, y)], fill=c + (255,))
-    mask = Image.new("L", (S, S), 0)
-    ImageDraw.Draw(mask).ellipse([pad, pad, S - pad, S - pad], fill=255)
-    img.paste(bg, (0, 0), mask)
-    d = ImageDraw.Draw(img)
+def flatten():
+    pts = []; i = 0; cur = (0, 0); start = (0, 0); cmd = None; pc2 = None
+    def nx():
+        nonlocal i
+        v = float(TOKS[i]); i += 1; return v
+    while i < len(TOKS):
+        if re.match(r'[a-zA-Z]', TOKS[i]): cmd = TOKS[i]; i += 1
+        rel = cmd.islower(); c = cmd.lower()
+        if c == 'm':
+            x = nx(); y = nx(); cur = (cur[0]+x, cur[1]+y) if rel else (x, y)
+            start = cur; pts.append(cur); cmd = 'l' if rel else 'L'; pc2 = None
+        elif c == 'l':
+            x = nx(); y = nx(); cur = (cur[0]+x, cur[1]+y) if rel else (x, y); pts.append(cur); pc2 = None
+        elif c == 'h':
+            x = nx(); cur = (cur[0]+x, cur[1]) if rel else (x, cur[1]); pts.append(cur); pc2 = None
+        elif c == 'v':
+            y = nx(); cur = (cur[0], cur[1]+y) if rel else (cur[0], y); pts.append(cur); pc2 = None
+        elif c == 'c':
+            a = [nx() for _ in range(6)]
+            p1 = (cur[0]+a[0], cur[1]+a[1]) if rel else (a[0], a[1])
+            p2 = (cur[0]+a[2], cur[1]+a[3]) if rel else (a[2], a[3])
+            p3 = (cur[0]+a[4], cur[1]+a[5]) if rel else (a[4], a[5])
+            pts.extend(_bez(cur, p1, p2, p3)); pc2 = p2; cur = p3
+        elif c == 's':
+            a = [nx() for _ in range(4)]
+            p2 = (cur[0]+a[0], cur[1]+a[1]) if rel else (a[0], a[1])
+            p3 = (cur[0]+a[2], cur[1]+a[3]) if rel else (a[2], a[3])
+            p1 = (2*cur[0]-pc2[0], 2*cur[1]-pc2[1]) if pc2 else cur
+            pts.extend(_bez(cur, p1, p2, p3)); pc2 = p2; cur = p3
+        elif c == 'z':
+            cur = start; pc2 = None
+        else:
+            i += 1
+    return pts
 
-    # кольцо из 6 цветов линий
-    if ring:
-        r_out = (S - pad) / 2 - S * 0.015
-        r_in = r_out - S * 0.055
-        cx = cy = S / 2
-        seg = 360 / len(LINE_COLORS)
-        for i, hx in enumerate(LINE_COLORS):
-            a0 = -90 + i * seg + 3
-            a1 = -90 + (i + 1) * seg - 3
-            d.arc([cx - r_out, cy - r_out, cx + r_out, cy + r_out],
-                  a0, a1, fill=hex2rgb(hx), width=int(S * 0.045))
+PTS = flatten()
 
-    # буква М
-    f = font(int(S * 0.5))
-    tb = d.textbbox((0, 0), "М", font=f)
-    tw, th = tb[2] - tb[0], tb[3] - tb[1]
-    d.text(((S - tw) / 2 - tb[0], (S - th) / 2 - tb[1]), "М", font=f, fill=WHITE)
+def render(size, pad_frac, maskable=False):
+    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    dr = ImageDraw.Draw(img)
+    if maskable:
+        dr.rectangle([0, 0, size-1, size-1], fill=RED)
+    else:
+        dr.rounded_rectangle([0, 0, size-1, size-1], radius=int(size*0.22), fill=RED)
+    avail = size * (1 - 2*pad_frac)
+    s = min(avail/VBW, avail/VBH)
+    ox = (size - VBW*s) / 2; oy = (size - VBH*s) / 2
+    dr.polygon([(ox+x*s, oy+y*s) for (x, y) in PTS], fill=WHITE)
+    return img
 
-    return img.resize((size, size), Image.LANCZOS)
+render(192, 0.20).save('icons/icon-192.png')
+render(512, 0.20).save('icons/icon-512.png')
+render(512, 0.30, maskable=True).save('icons/icon-maskable-512.png')
+render(180, 0.20).save('icons/apple-touch-icon.png')
 
-make(192).save("icons/icon-192.png")
-make(512).save("icons/icon-512.png")
-make(512, maskable=True).save("icons/icon-maskable-512.png")
-make(180, maskable=True).save("icons/apple-touch-icon.png")
-make(32, ring=False).save("icons/favicon-32.png")
-print("icons written")
+fav = Image.new('RGBA', (32, 32), RED + (255,))
+fd = ImageDraw.Draw(fav)
+avail = 32 * (1 - 2*0.14); s = min(avail/VBW, avail/VBH)
+ox = (32 - VBW*s)/2; oy = (32 - VBH*s)/2
+fd.polygon([(ox+x*s, oy+y*s) for (x, y) in PTS], fill=WHITE)
+fav.save('icons/favicon-32.png')
+
+print('Иконки из настоящего логотипа обновлены.')

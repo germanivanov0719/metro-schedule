@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#ffffff" id="themeColor">
-  <meta name="description" content="Время работы вестибюлей, первые и последние поезда метро Санкт-Петербурга. Работает офлайн.">
-  <title>Метро СПб · Режим станций</title>
+  <meta name="description" content="Время работы вестибюлей, первые и последние поезда Петербургского метрополитена. Работает офлайн.">
+  <title>Петербургский метрополитен · режим станций</title>
 
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -16,16 +16,15 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Serif:wght@400;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Serif:wght@400;700&family=Roboto:wght@700&display=swap">
 
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Переиспользуемый логотип «М» метрополитена -->
+  <!-- Настоящий логотип Петербургского метрополитена -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-    <symbol id="metroM" viewBox="0 0 24 24">
-      <path d="M2.6 19.4V4.6h3.3l6.1 8.1 6.1-8.1h3.3v14.8h-3.6v-8.6L12 17.1 6.3 10.8v8.6z"
-            fill="currentColor"/>
+    <symbol id="metroM" viewBox="0 0 20000000 15080000">
+      <path fill="currentColor" d="m6026765 2907127c-299804-1015676-1113594-904356-1.67e6 -431300-1370626 1266075-3155291 3923495-2013094 7.75e6 956578 3241739 4936901 5314839 4936901 5314839h-4.64e6s-2395828-2685264-2.61e6 -5843500c-271260-3993020 1327930-6511332 3183988-8153020 1741824-1544365 3398006-2003480 3398006-2003480l3387831 1.11e7 3387831-1.11e7s1656182 459116 3398006 2003480c1856058 1641687 3455248 4.16e6 3183988 8153020-214173 3158236-2.61e6 5843500-2.61e6 5843500h-4.64e6s3.98e6 -2073100 4936900-5314839c1142197-3826069-642468-6483489-2013094-7.75e6 -556826-473056-1370617-584376-1.67e6 431300-1027971 3241740-3973210 1.253e7 -3973210 1.253e7s-2945239-9291363-3973210-1.253e7z"/>
     </symbol>
   </svg>
 
@@ -33,10 +32,10 @@
     <div class="topbar__row">
       <div class="brand">
         <span class="brand__mark" aria-hidden="true">
-          <svg class="brand__m" viewBox="0 0 24 24"><use href="#metroM"/></svg>
+          <svg class="brand__m" viewBox="0 0 1326 1000"><use href="#metroM"/></svg>
         </span>
         <span class="brand__text">
-          <span class="brand__title">Метро Санкт-Петербурга</span>
+          <span class="brand__title">Петербургский метрополитен</span>
           <span class="brand__sub">режим работы станций</span>
         </span>
       </div>
@@ -45,6 +44,8 @@
         <span class="clock__parity" id="clockParity"></span>
       </div>
     </div>
+
+    <div class="updstatus" id="updStatus" aria-live="polite"></div>
 
     <div class="search">
       <input id="search" type="search" inputmode="search" autocomplete="off"
@@ -61,6 +62,9 @@
       <span class="loader__text">Загрузка расписания…</span>
     </div>
   </main>
+
+  <!-- Свёрнутое напоминание о пересадках (после закрытия верхней карточки) -->
+  <button class="tmini" id="transferMini" hidden></button>
 
   <footer class="foot" id="foot"></footer>
 
