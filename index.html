@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="system">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff" id="themeColor">
+  <meta name="description" content="Время работы вестибюлей, первые и последние поезда метро Санкт-Петербурга. Работает офлайн.">
+  <title>Метро СПб · Режим станций</title>
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Метро СПб">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Sans:ital,wght@0,400;0,700;1,400&family=PT+Serif:wght@400;700&display=swap">
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Переиспользуемый логотип «М» метрополитена -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="metroM" viewBox="0 0 24 24">
+      <path d="M2.6 19.4V4.6h3.3l6.1 8.1 6.1-8.1h3.3v14.8h-3.6v-8.6L12 17.1 6.3 10.8v8.6z"
+            fill="currentColor"/>
+    </symbol>
+  </svg>
+
+  <header class="topbar" id="topbar">
+    <div class="topbar__row">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true">
+          <svg class="brand__m" viewBox="0 0 24 24"><use href="#metroM"/></svg>
+        </span>
+        <span class="brand__text">
+          <span class="brand__title">Метро Санкт-Петербурга</span>
+          <span class="brand__sub">режим работы станций</span>
+        </span>
+      </div>
+      <div class="clock" id="clock">
+        <span class="clock__time" id="clockTime">--:--</span>
+        <span class="clock__parity" id="clockParity"></span>
+      </div>
+    </div>
+
+    <div class="search">
+      <input id="search" type="search" inputmode="search" autocomplete="off"
+             placeholder="Станция или вестибюль" aria-label="Поиск станции">
+      <button class="search__clear" id="searchClear" aria-label="Очистить" hidden>×</button>
+    </div>
+
+    <nav class="lines" id="lineFilter" aria-label="Линии"></nav>
+  </header>
+
+  <main id="list" class="list" aria-live="polite" aria-busy="true">
+    <div class="loader" id="loader">
+      <span class="loader__spin" aria-hidden="true"></span>
+      <span class="loader__text">Загрузка расписания…</span>
+    </div>
+  </main>
+
+  <footer class="foot" id="foot"></footer>
+
+  <div class="theme" role="group" aria-label="Тема оформления">
+    <button class="theme__btn" data-theme-set="system">Система</button>
+    <button class="theme__btn" data-theme-set="light">Светлая</button>
+    <button class="theme__btn" data-theme-set="dark">Тёмная</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
