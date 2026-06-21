@@ -17,6 +17,7 @@ const FETCH_TIMEOUT = 12000;
 
 // CORS-прокси (бесплатные, без токенов). Пробуем по очереди.
 const PROXIES = [
+  (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
   (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
