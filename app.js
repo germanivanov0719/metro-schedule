@@ -23,6 +23,7 @@ const PROXIES = [
   (u) => `https://thingproxy.freeboard.io/fetch/${u}`,
   (u) => u, // прямой запрос — на случай, если когда-нибудь появится CORS
   (u) => `https://functions.yandexcloud.net/d4ef7klnnbct2qi474q6`,
+  (u) => `data.html`,
 ];
 
 // ───────────────────────────── элементы ──────────────────────────────
