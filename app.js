@@ -99,6 +99,28 @@ const el = {
   clockParity: document.getElementById('clockParity'),
   updStatus: document.getElementById('updStatus'),
   toast: document.getElementById('toast'),
+  tabs: document.getElementById('tabs'),
+  stationsBar: document.getElementById('stationsBar'),
+  routeBar: document.getElementById('routeBar'),
+  routeView: document.getElementById('routeView'),
+  routeItin: document.getElementById('routeItin'),
+  mapScroll: document.getElementById('mapScroll'),
+  pickFrom: document.getElementById('pickFrom'),
+  pickTo: document.getElementById('pickTo'),
+  fromVal: document.getElementById('fromVal'),
+  toVal: document.getElementById('toVal'),
+  swapBtn: document.getElementById('swapBtn'),
+  routeClear: document.getElementById('routeClear'),
+  segTime: document.getElementById('segTime'),
+  xferTime: document.getElementById('xferTime'),
+  picker: document.getElementById('picker'),
+  pickerTitle: document.getElementById('pickerTitle'),
+  pickerClose: document.getElementById('pickerClose'),
+  pickerSearch: document.getElementById('pickerSearch'),
+  pickerList: document.getElementById('pickerList'),
+  zoomIn: document.getElementById('zoomIn'),
+  zoomOut: document.getElementById('zoomOut'),
+  zoomFit: document.getElementById('zoomFit'),
   themeColor: document.getElementById('themeColor'),
 };
 
@@ -814,24 +836,35 @@ function bindStaticEvents() {
     b.addEventListener('click', () => setTheme(b.dataset.themeSet)));
 
   bindSwipe();
+  bindRoute();
 }
 
 // Горизонтальный свайп по списку: влево — следующая линия, вправо — предыдущая.
 function bindSwipe() {
-  let x0 = 0, y0 = 0, t0 = 0, active = false;
+  let x0 = 0, y0 = 0, t0 = 0, active = false, lock = null; // lock: 'h' | 'v' | null
   const area = el.list;
   area.addEventListener('touchstart', (e) => {
     if (e.touches.length !== 1) { active = false; return; }
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); active = true;
+    const t = e.touches[0];
+    x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); active = true; lock = null;
   }, { passive: true });
+  // Не пассивный: как только жест опознан как горизонтальный — гасим нативную
+  // прокрутку/«оттягивание» страницы, чтобы не было рывка перед сменой линии.
+  area.addEventListener('touchmove', (e) => {
+    if (!active) return;
+    const t = e.touches[0];
+    const dx = t.clientX - x0, dy = t.clientY - y0;
+    if (lock === null && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+      lock = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+    if (lock === 'h' && e.cancelable) e.preventDefault();
+  }, { passive: false });
   area.addEventListener('touchend', (e) => {
     if (!active) return; active = false;
+    if (lock !== 'h') return;                    // только горизонтальный жест
     const t = e.changedTouches[0];
-    const dx = t.clientX - x0, dy = t.clientY - y0, dt = Date.now() - t0;
-    // Свайп: достаточно длинный, преимущественно горизонтальный и быстрый.
-    if (Math.abs(dx) < 55) return;
-    if (Math.abs(dx) < Math.abs(dy) * 1.7) return;
-    if (dt > 800) return;
+    const dx = t.clientX - x0, dt = Date.now() - t0;
+    if (Math.abs(dx) < 50 || dt > 800) return;   // достаточно длинный и быстрый
     swipeLine(dx < 0 ? 'next' : 'prev');
   }, { passive: true });
 }
@@ -840,5 +873,311 @@ function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
+
+
+
+/* ════════════════════════ Вкладка «Маршрут»: карта + навигатор ════════════════════════ */
+
+// Координаты станций на схеме (user-units виртуального полотна ~980×1230).
+const MAP_POS = { "1:Проспект Ветеранов":[130,1075], "1:Ленинский проспект":[164,1019], "1:Автово":[198,964], "1:Кировский завод":[232,908], "1:Нарвская":[288,845], "1:Балтийская":[344,783], "1:Технологический институт 1":[400,720], "1:Пушкинская":[455,668], "1:Владимирская":[492,612], "1:Площадь Восстания":[522,558], "1:Чернышевская":[541,505], "1:Площадь Ленина":[560,452], "1:Выборгская":[569,401], "1:Лесная":[579,349], "1:Площадь Мужества":[588,298], "1:Политехническая":[597,246], "1:Академическая":[606,195], "1:Гражданский проспект":[616,143], "1:Девяткино":[625,92], "2:Купчино":[360,1095], "2:Звездная":[360,1043], "2:Московская":[360,991], "2:Парк Победы":[360,939], "2:Электросила":[360,886], "2:Московские ворота":[360,834], "2:Фрунзенская":[360,782], "2:Технологический институт 2":[360,730], "2:Сенная площадь":[360,650], "2:Невский проспект":[360,560], "2:Горьковская":[360,502], "2:Петроградская":[360,443], "2:Черная речка":[360,384], "2:Пионерская":[360,326], "2:Удельная":[360,268], "2:Озерки":[360,209], "2:Проспект Просвещения":[360,150], "2:Парнас":[360,92], "3:Беговая":[78,470], "3:Зенит":[135,499], "3:Приморская":[193,529], "3:Василеостровская":[250,558], "3:Гостиный двор":[385,560], "3:Маяковская":[545,560], "3:Площадь Александра Невского 1":[758,642], "3:Елизаровская":[781,704], "3:Ломоносовская":[805,766], "3:Пролетарская":[828,828], "3:Обухово":[852,890], "3:Рыбацкое":[875,952], "4:Улица Дыбенко":[905,415], "4:Проспект Большевиков":[869,478], "4:Ладожская":[832,542], "4:Новочеркасская":[796,605], "4:Площадь Александра Невского 2":[760,668], "4:Лиговский проспект":[620,648], "4:Достоевская":[495,636], "4:Спасская":[402,672], "4:Горный институт":[180,642], "5:Шушары":[748,1148], "5:Дунайская":[709,1086], "5:Проспект Славы":[671,1023], "5:Международная":[632,961], "5:Бухарестская":[594,899], "5:Волковская":[555,837], "5:Обводный канал":[517,774], "5:Звенигородская":[478,712], "5:Садовая":[418,652], "5:Адмиралтейская":[348,580], "5:Спортивная":[300,470], "5:Чкаловская":[262,407], "5:Крестовский остров":[225,344], "5:Старая Деревня":[188,281], "5:Комендантский проспект":[150,218], "6:Юго-Западная":[180,988], "6:Путиловская":[236,934] };
+const MAP_VB = [0, 0, 980, 1230];
+
+// Состояние маршрута
+let routeBuilt = false;
+let fromPlace = null, toPlace = null;
+let pickerTarget = 'from';
+let mapZoom = 1;
+
+const lineById = (id) => DATA.lines.find((l) => String(l.id) === String(id));
+// «Место» = отображаемое имя станции; у пересадок ему соответствуют 2 узла.
+function placeNodes() {
+  const m = new Map(); // displayName -> [{line, station, key}]
+  for (const l of DATA.lines) for (const s of l.stops) {
+    const dn = displayName(s.station);
+    const arr = m.get(dn) || []; arr.push({ line: l.id, station: s.station, key: `${l.id}:${s.station}` });
+    m.set(dn, arr);
+  }
+  return m;
+}
+const PLACES = () => placeNodes();
+
+// Граф: рёбра-перегоны (segTime) и пересадки (xferTime).
+function buildGraph(segTime, xferTime) {
+  const g = new Map(); // key -> [{to, w, kind}]
+  const add = (a, b, w, kind) => { (g.get(a) || g.set(a, []).get(a)).push({ to: b, w, kind }); };
+  for (const l of DATA.lines) {
+    for (let i = 0; i < l.stops.length - 1; i++) {
+      const a = `${l.id}:${l.stops[i].station}`, b = `${l.id}:${l.stops[i + 1].station}`;
+      add(a, b, segTime, 'ride'); add(b, a, segTime, 'ride');
+    }
+  }
+  for (const hub of INTERCHANGES) {
+    for (let i = 0; i < hub.length; i++) for (let j = i + 1; j < hub.length; j++) {
+      add(hub[i], hub[j], xferTime, 'xfer'); add(hub[j], hub[i], xferTime, 'xfer');
+    }
+  }
+  return g;
+}
+
+// Дейкстра от множества стартовых узлов до множества целевых.
+function dijkstra(graph, sources, targets) {
+  const dist = new Map(), prev = new Map();
+  const pq = []; // простая приоритетная очередь (массив + сортировка вставкой)
+  const push = (k, d) => { dist.set(k, d); let i = pq.length; pq.push({ k, d }); while (i > 0 && pq[i - 1].d > pq[i].d) { [pq[i - 1], pq[i]] = [pq[i], pq[i - 1]]; i--; } };
+  for (const s of sources) push(s, 0);
+  const targetSet = new Set(targets);
+  const done = new Set();
+  while (pq.length) {
+    const { k, d } = pq.shift();
+    if (done.has(k)) continue; done.add(k);
+    if (d > (dist.get(k) ?? Infinity)) continue;
+    if (targetSet.has(k)) return reconstruct(prev, k, d);
+    for (const e of graph.get(k) || []) {
+      const nd = d + e.w;
+      if (nd < (dist.get(e.to) ?? Infinity)) { prev.set(e.to, { from: k, kind: e.kind, w: e.w }); push(e.to, nd); }
+    }
+  }
+  return null;
+}
+function reconstruct(prev, end, total) {
+  const nodes = [end]; const edges = [];
+  let cur = end;
+  while (prev.has(cur)) { const p = prev.get(cur); edges.unshift({ from: p.from, to: cur, kind: p.kind, w: p.w }); nodes.unshift(p.from); cur = p.from; }
+  return { nodes, edges, total };
+}
+
+// Построить маршрут между выбранными местами.
+function computeRoute() {
+  if (!fromPlace || !toPlace || fromPlace === toPlace) { renderItinerary(null); drawRoute(null); return; }
+  const seg = clampTime(el.segTime.value), xfer = clampTime(el.xferTime.value);
+  const places = PLACES();
+  const sources = (places.get(fromPlace) || []).map((n) => n.key);
+  const targets = (places.get(toPlace) || []).map((n) => n.key);
+  if (!sources.length || !targets.length) return;
+  const graph = buildGraph(seg, xfer);
+  const res = dijkstra(graph, sources, targets);
+  renderItinerary(res ? { ...res, seg, xfer } : null);
+  drawRoute(res);
+}
+const clampTime = (v) => Math.min(20, Math.max(1, parseInt(v, 10) || 3));
+
+/* ── Карта (SVG) ── */
+
+function buildMap() {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const parts = [`<svg id="metroMap" viewBox="${MAP_VB.join(' ')}" xmlns="${svgNS}" role="img" aria-label="Схема метро">`];
+  // линии (полилинии)
+  for (const l of DATA.lines) {
+    const pts = l.stops.map((s) => MAP_POS[`${l.id}:${s.station}`]).filter(Boolean);
+    if (pts.length < 2) continue;
+    const dpath = pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ');
+    parts.push(`<path class="ml" data-line="${l.id}" d="${dpath}" fill="none" stroke="${l.color}" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>`);
+  }
+  // пересадочные связки
+  for (const hub of INTERCHANGES) {
+    for (let i = 0; i < hub.length; i++) for (let j = i + 1; j < hub.length; j++) {
+      const a = MAP_POS[hub[i]], b = MAP_POS[hub[j]];
+      if (a && b) parts.push(`<line class="mx" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke-width="5" stroke-linecap="round"/>`);
+    }
+  }
+  // слой подсветки маршрута (заполняется в drawRoute)
+  parts.push('<g class="route-overlay" id="routeOverlay"></g>');
+  // станции (кружки) + хит-зоны
+  for (const l of DATA.lines) for (const s of l.stops) {
+    const p = MAP_POS[`${l.id}:${s.station}`]; if (!p) continue;
+    const dn = displayName(s.station);
+    parts.push(`<g class="mst" data-key="${esc(l.id + ':' + s.station)}" data-place="${esc(dn)}">`
+      + `<circle class="mst__hit" cx="${p[0]}" cy="${p[1]}" r="15"/>`
+      + `<circle class="mst__dot" cx="${p[0]}" cy="${p[1]}" r="5.5" stroke="${l.color}"/>`
+      + `</g>`);
+  }
+  // подписи — только пересадки и конечные (чтобы не было каши)
+  for (const lbl of MAP_LABELS()) {
+    parts.push(`<text class="mlbl" x="${lbl.x}" y="${lbl.y}" text-anchor="${lbl.anchor}">${esc(lbl.text)}</text>`);
+  }
+  parts.push('</svg>');
+  el.mapScroll.innerHTML = parts.join('');
+  // обработчик кликов по станциям
+  el.mapScroll.querySelectorAll('.mst').forEach((g) =>
+    g.addEventListener('click', () => onMapStation(g.dataset.place)));
+  applyZoom();
+}
+
+// Подписи: конечные станции каждой линии + пересадочные узлы.
+function MAP_LABELS() {
+  const out = []; const seen = new Set();
+  const put = (key, text, dx = 9, anchor = 'start') => {
+    const p = MAP_POS[key]; if (!p) return;
+    out.push({ x: p[0] + dx, y: p[1] + 4, text, anchor });
+  };
+  for (const l of DATA.lines) {
+    const first = l.stops[0], last = l.stops[l.stops.length - 1];
+    put(`${l.id}:${first.station}`, displayName(first.station));
+    put(`${l.id}:${last.station}`, displayName(last.station));
+  }
+  for (const hub of INTERCHANGES) {
+    // одна подпись на узел (по первому элементу), правее
+    const k = hub[0]; const dn = displayName(k.slice(k.indexOf(':') + 1));
+    if (seen.has(dn)) continue; seen.add(dn);
+    put(k, dn, 11);
+  }
+  return out;
+}
+
+function onMapStation(place) {
+  if (!fromPlace) { setPlace('from', place); }
+  else if (!toPlace) { if (place !== fromPlace) setPlace('to', place); }
+  else { setPlace('from', place); setPlace('to', null); }
+}
+function setPlace(which, place) {
+  if (which === 'from') { fromPlace = place; el.fromVal.textContent = place || 'выберите станцию'; el.fromVal.classList.toggle('set', !!place); }
+  else { toPlace = place; el.toVal.textContent = place || 'выберите станцию'; el.toVal.classList.toggle('set', !!place); }
+  computeRoute();
+}
+
+// Подсветить маршрут на карте: цветной оверлей по сегментам + станции.
+function drawRoute(res) {
+  const svg = el.mapScroll.querySelector('#metroMap'); if (!svg) return;
+  const ov = svg.querySelector('#routeOverlay');
+  while (ov.firstChild) ov.removeChild(ov.firstChild);
+  svg.classList.toggle('has-route', !!res);
+  const used = new Set(res ? res.nodes : []);
+  const eps = res ? new Set([res.nodes[0], res.nodes[res.nodes.length - 1]]) : new Set();
+  svg.querySelectorAll('.mst').forEach((g) => {
+    g.classList.toggle('on', used.has(g.dataset.key));
+    g.classList.toggle('ep', eps.has(g.dataset.key));
+  });
+  if (!res) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  for (const e of res.edges) {
+    const a = MAP_POS[e.from], b = MAP_POS[e.to]; if (!a || !b) continue;
+    const ln = e.from.slice(0, e.from.indexOf(':'));
+    const col = e.kind === 'ride' ? ((lineById(ln) || {}).color || '#888') : 'var(--muted)';
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', a[0]); line.setAttribute('y1', a[1]);
+    line.setAttribute('x2', b[0]); line.setAttribute('y2', b[1]);
+    line.setAttribute('stroke', col); line.setAttribute('stroke-width', '9');
+    line.setAttribute('stroke-linecap', 'round');
+    if (e.kind === 'xfer') line.setAttribute('stroke-dasharray', '1 9');
+    ov.appendChild(line);
+  }
+}
+
+/* ── Маршрутный лист ── */
+
+function renderItinerary(res) {
+  if (!res) {
+    el.routeItin.innerHTML = (fromPlace && toPlace && fromPlace === toPlace)
+      ? '<div class="ri-empty">Откуда и куда совпадают.</div>'
+      : '<div class="ri-empty">Выберите станции отправления и назначения — на карте или кнопками выше.</div>';
+    return;
+  }
+  // Сгруппировать по линиям (поездки) с учётом пересадок.
+  const legs = []; // {line, stations:[names], }
+  let cur = null;
+  const nodeLine = (k) => k.slice(0, k.indexOf(':'));
+  const nodeStation = (k) => k.slice(k.indexOf(':') + 1);
+  res.nodes.forEach((k, i) => {
+    const ln = nodeLine(k);
+    const edge = i > 0 ? res.edges[i - 1] : null;
+    if (edge && edge.kind === 'xfer') { cur = null; } // пересадка — новый сегмент
+    if (!cur || cur.line !== ln) { cur = { line: ln, stations: [] }; legs.push(cur); }
+    cur.stations.push(nodeStation(k));
+  });
+  let rides = 0, xfers = 0;
+  for (const e of res.edges) { if (e.kind === 'ride') rides++; else xfers++; }
+
+  const head = `<div class="ri-sum"><span class="ri-time">${res.total} мин</span>`
+    + `<span class="ri-meta">${rides} ${plural(rides, 'перегон', 'перегона', 'перегонов')} · ${xfers} ${plural(xfers, 'пересадка', 'пересадки', 'пересадок')}</span></div>`;
+
+  const steps = [];
+  legs.forEach((leg, i) => {
+    const l = lineById(leg.line) || {};
+    const a = displayName(leg.stations[0]), b = displayName(leg.stations[leg.stations.length - 1]);
+    const n = leg.stations.length - 1;
+    if (i > 0) steps.push(`<div class="ri-xfer">${svgIco('icoArrowR', 'ri-arr')} Пересадка на ${mMarkInline(l)} <b>${esc(l.title || l.name)}</b></div>`);
+    steps.push(`<div class="ri-leg" style="--line:${l.color}">`
+      + `<div class="ri-leg__bar"></div>`
+      + `<div class="ri-leg__body"><div class="ri-leg__line">${mMarkInline(l)} <span>${esc(l.title || l.name)}</span></div>`
+      + `<div class="ri-leg__from">${esc(a)}</div>`
+      + `<div class="ri-leg__ride">${n} ${plural(n, 'перегон', 'перегона', 'перегонов')}</div>`
+      + `<div class="ri-leg__to">${esc(b)}</div></div></div>`);
+  });
+  el.routeItin.innerHTML = head + '<div class="ri-steps">' + steps.join('') + '</div>';
+}
+function mMarkInline(l) {
+  return `<span class="ri-badge" style="--c:${l.color}">${svgLogo('ri-badge__logo')}<span>${esc(l.id)}</span></span>`;
+}
+function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+}
+
+/* ── Зум ── */
+
+function applyZoom() {
+  const svg = el.mapScroll.querySelector('#metroMap'); if (!svg) return;
+  const w = MAP_VB[2] * mapZoom, h = MAP_VB[3] * mapZoom;
+  svg.style.width = w + 'px'; svg.style.height = h + 'px';
+}
+function setZoom(z) { mapZoom = Math.min(2.4, Math.max(0.5, z)); applyZoom(); }
+
+/* ── Выбор станции (модалка) ── */
+
+function openPicker(which) {
+  pickerTarget = which;
+  el.pickerTitle.textContent = which === 'from' ? 'Откуда' : 'Куда';
+  el.picker.hidden = false;
+  el.pickerSearch.value = ''; fillPicker('');
+  setTimeout(() => el.pickerSearch.focus(), 30);
+}
+function closePicker() { el.picker.hidden = true; }
+function fillPicker(q) {
+  const nq = norm(q);
+  const places = [...PLACES().entries()].sort((a, b) => a[0].localeCompare(b[0], 'ru'));
+  const rows = [];
+  for (const [name, nodes] of places) {
+    if (nq && !norm(name).includes(nq)) continue;
+    const badges = nodes.map((n) => { const l = lineById(n.line) || {}; return `<span class="pk-badge" style="background:${l.color}">${esc(n.line)}</span>`; }).join('');
+    rows.push(`<button class="pk-row" data-place="${esc(name)}">${badges}<span class="pk-name">${esc(name)}</span></button>`);
+  }
+  el.pickerList.innerHTML = rows.join('') || '<div class="pk-empty">Не найдено</div>';
+  el.pickerList.querySelectorAll('.pk-row').forEach((r) =>
+    r.addEventListener('click', () => { setPlace(pickerTarget, r.dataset.place); closePicker(); }));
+}
+
+/* ── Вкладки ── */
+
+function showTab(tab) {
+  const route = tab === 'route';
+  document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === tab)));
+  el.stationsBar.hidden = route; el.routeBar.hidden = !route;
+  el.list.hidden = route; el.minis.hidden = route; el.foot.hidden = route;
+  el.routeView.hidden = !route;
+  if (route && !routeBuilt) { buildMap(); routeBuilt = true; setZoom(fitZoom()); }
+}
+function fitZoom() {
+  const cw = el.mapScroll.clientWidth || 360;
+  return Math.max(0.6, Math.min(1.4, cw / MAP_VB[2] * 1.55));
+}
+
+function bindRoute() {
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => showTab(t.dataset.tab)));
+  el.pickFrom.addEventListener('click', () => openPicker('from'));
+  el.pickTo.addEventListener('click', () => openPicker('to'));
+  el.swapBtn.addEventListener('click', () => { const f = fromPlace, t = toPlace; setPlace('from', t); setPlace('to', f); });
+  el.routeClear.addEventListener('click', () => { setPlace('from', null); setPlace('to', null); });
+  el.segTime.addEventListener('input', computeRoute);
+  el.xferTime.addEventListener('input', computeRoute);
+  el.pickerClose.addEventListener('click', closePicker);
+  el.picker.addEventListener('click', (e) => { if (e.target === el.picker) closePicker(); });
+  el.pickerSearch.addEventListener('input', () => fillPicker(el.pickerSearch.value));
+  el.zoomIn.addEventListener('click', () => setZoom(mapZoom * 1.25));
+  el.zoomOut.addEventListener('click', () => setZoom(mapZoom / 1.25));
+  el.zoomFit.addEventListener('click', () => setZoom(fitZoom()));
+}
+
 
 init();

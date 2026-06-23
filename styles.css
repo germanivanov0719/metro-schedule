@@ -38,11 +38,22 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
+html { -webkit-tap-highlight-color: transparent; }
 body {
   background: var(--bg); color: var(--text);
   font-family: var(--sans); font-size: 16px; line-height: 1.4;
   -webkit-font-smoothing: antialiased; overflow-wrap: anywhere;
+  overscroll-behavior-x: none;                         /* нет горизонтального рывка/навигации */
+  -webkit-tap-highlight-color: transparent;            /* нет синей вспышки при тапе */
 }
+/* По всем интерактивным элементам: без вспышки тапа, без double-tap-zoom задержки */
+button, a, .stn, .chip, .xfer, .notice__head, .tmini, .theme__btn {
+  -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+}
+.chip, .xfer { user-select: none; -webkit-user-select: none; }
+/* Свайп-зона: вертикальная прокрутка нативная, горизонталь обрабатываем сами */
+.list { touch-action: pan-y pinch-zoom; }
+.stn { touch-action: pan-y pinch-zoom; }
 [hidden] { display: none !important; }       /* надёжно прячем скрытые элементы */
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 .arr { width: 1.05em; height: 1.05em; vertical-align: -0.17em; display: inline-block; fill: none; }
@@ -154,9 +165,11 @@ body {
 .stn__top, .stn__name, .stn__status, .line-head { user-select: none; }
 .stn--open { border-color: color-mix(in srgb, var(--line) 70%, var(--hair)); box-shadow: 0 0 17px -3px color-mix(in srgb, var(--line) 48%, transparent); }
 .stn--closed { opacity: .58; }
-.stn.flash { animation: flash 1.4s ease-out; }
-.stn.flash { outline: 2px solid var(--accent); outline-offset: -1px; }
-@keyframes flash { 0%,15% { outline-color: var(--accent); } 100% { outline-color: transparent; } }
+.stn.flash { animation: flash 1.3s ease-out; }
+@keyframes flash {
+  0%, 12% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--line) 42%, transparent), 0 0 20px -1px color-mix(in srgb, var(--line) 55%, transparent); }
+  100%    { box-shadow: 0 0 17px -3px color-mix(in srgb, var(--line) 48%, transparent); }
+}
 .stn__top { padding: 10px 13px; }
 .stn__toggle { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; width: 100%; text-align: left; background: transparent; border: 0; color: inherit; font: inherit; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .stn__name { font-family: var(--serif); font-weight: 700; font-size: 15.5px; min-width: 0; color: var(--text); }
@@ -259,6 +272,7 @@ body {
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* доступность */
+:where(button, input, [tabindex]):focus { outline: none; }
 :where(button, input, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
 
 /* Анимация смены линии свайпом */
@@ -284,3 +298,83 @@ body {
   .loader__spin { border-top-color: var(--accent); opacity: .7; }
 }
 @media (min-width: 560px) { .dirs { grid-template-columns: 1fr 1fr; } }
+
+/* ════════════════════════ Вкладки ════════════════════════ */
+.tabs { max-width: var(--maxw); margin: 12px auto 0; display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--hair); border-radius: 11px; padding: 3px; }
+.tab { flex: 1; border: 0; background: transparent; color: var(--muted); font-family: var(--sans); font-weight: 700; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background .15s, color .15s; }
+.tab[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: 0 0 8px -3px color-mix(in srgb, var(--text) 30%, transparent); }
+
+/* ── Панель маршрута ── */
+#routeBar { max-width: var(--maxw); margin: 0 auto; }
+.rb-row { display: flex; align-items: stretch; gap: 8px; margin-top: 12px; }
+.rb-pick { flex: 1; min-width: 0; text-align: left; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; padding: 7px 11px; cursor: pointer; font: inherit; color: var(--text); display: flex; flex-direction: column; gap: 1px; }
+.rb-pick__lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-2); font-weight: 700; }
+.rb-pick__val { font-size: 14px; color: var(--muted-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rb-pick__val.set { color: var(--text); font-weight: 700; }
+.rb-swap { flex: none; width: 38px; border: 1px solid var(--hair); border-radius: 10px; background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.rb-swap svg { width: 18px; height: 18px; }
+.rb-swap:hover { color: var(--accent); border-color: var(--accent); }
+.rb-times { display: flex; align-items: center; gap: 12px; margin: 10px 0 2px; font-size: 12.5px; color: var(--muted); }
+.rb-time { display: inline-flex; align-items: center; gap: 6px; }
+.rb-time input { width: 46px; text-align: center; border: 1px solid var(--hair); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-weight: 700; padding: 5px 4px; }
+.rb-time input:focus { outline: none; border-color: var(--accent); }
+.rb-clear { margin-left: auto; border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; padding: 5px; }
+
+/* ── Вкладка-маршрут: контейнер ── */
+#routeView { max-width: var(--maxw); margin: 0 auto; padding: 10px var(--pad) 0; }
+
+/* маршрутный лист */
+.route-itin { margin-bottom: 12px; }
+.ri-empty { text-align: center; color: var(--muted-2); font-size: 13.5px; padding: 18px 12px; background: var(--surface); border: 1px solid var(--hair); border-radius: var(--r); }
+.ri-sum { display: flex; align-items: baseline; gap: 10px; padding: 4px 2px 12px; }
+.ri-time { font-family: var(--serif); font-weight: 700; font-size: 24px; color: var(--text); }
+.ri-meta { font-size: 12.5px; color: var(--muted); }
+.ri-steps { display: flex; flex-direction: column; gap: 0; }
+.ri-badge { display: inline-flex; align-items: center; gap: 3px; background: var(--c); color: #fff; border-radius: 6px; padding: 2px 7px 2px 5px; vertical-align: middle; }
+.ri-badge__logo { height: 11px; width: auto; display: block; }
+.ri-badge span { font-family: var(--mono); font-weight: 700; font-size: 11.5px; line-height: 1; }
+.ri-leg { display: flex; gap: 11px; }
+.ri-leg__bar { flex: none; width: 7px; border-radius: 4px; background: var(--line); margin: 4px 0; }
+.ri-leg__body { padding: 6px 0 8px; min-width: 0; }
+.ri-leg__line { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); font-weight: 700; margin-bottom: 5px; }
+.ri-leg__from, .ri-leg__to { font-family: var(--serif); font-weight: 700; font-size: 15px; color: var(--text); }
+.ri-leg__ride { font-size: 11.5px; color: var(--muted-2); margin: 2px 0 2px 1px; padding-left: 13px; border-left: 2px dotted var(--hair); }
+.ri-xfer { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); padding: 8px 0 8px 18px; }
+.ri-arr { width: 15px; height: 15px; }
+
+/* ── Карта ── */
+.map-wrap { position: relative; border: 1px solid var(--hair); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.map-scroll { overflow: auto; max-height: 68vh; -webkit-overflow-scrolling: touch; }
+#metroMap { display: block; }
+.map-zoom { position: absolute; right: 10px; bottom: 10px; z-index: 5; display: flex; flex-direction: column; gap: 5px; }
+.map-zoom button { width: 34px; height: 34px; border: 1px solid var(--hair); background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(6px); border-radius: 9px; color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; display: grid; place-items: center; }
+.map-zoom button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* SVG-элементы карты */
+.ml { transition: opacity .2s; }
+.mx { stroke: var(--muted); opacity: .85; }
+.mst__hit { fill: transparent; cursor: pointer; }
+.mst__dot { fill: var(--surface); stroke-width: 3; transition: opacity .2s; }
+.mlbl { font-family: var(--sans); font-size: 13px; fill: var(--text); paint-order: stroke; stroke: var(--surface); stroke-width: 3.5px; stroke-linejoin: round; pointer-events: none; }
+.route-overlay line { pointer-events: none; }
+#metroMap.has-route .ml { opacity: .22; }
+#metroMap.has-route .mx { opacity: .25; }
+#metroMap.has-route .mst:not(.on) .mst__dot { opacity: .3; }
+#metroMap.has-route .mst:not(.on) ~ .mlbl { opacity: .3; }
+.mst.on .mst__dot { stroke-width: 4; }
+.mst.ep .mst__dot { r: 8; fill: var(--text); stroke: var(--text); }
+
+/* ── Модалка выбора станции ── */
+.picker { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; justify-content: center; }
+.picker__box { background: var(--bg); width: 100%; max-width: 520px; max-height: 80vh; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; padding: 12px 14px calc(14px + var(--safe-b)); }
+@media (min-width: 560px) { .picker { align-items: center; } .picker__box { border-radius: 16px; } }
+.picker__head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 15px; padding: 2px 2px 10px; }
+.picker__close { border: 0; background: transparent; color: var(--muted); font-size: 24px; line-height: 1; cursor: pointer; }
+.picker__search { width: 100%; appearance: none; background: var(--surface); border: 1px solid var(--hair); border-radius: 10px; color: var(--text); font: inherit; font-size: 16px; padding: 10px 12px; outline: none; }
+.picker__search:focus { border-color: var(--accent); }
+.picker__list { overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; }
+.pk-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: transparent; border: 0; border-radius: 9px; padding: 9px 8px; cursor: pointer; font: inherit; color: var(--text); }
+.pk-row:hover { background: var(--surface-2); }
+.pk-badge { flex: none; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; color: #fff; font-family: var(--mono); font-weight: 700; font-size: 11px; display: inline-grid; place-items: center; }
+.pk-name { font-size: 14.5px; }
+.pk-empty { text-align: center; color: var(--muted-2); padding: 24px; font-size: 14px; }

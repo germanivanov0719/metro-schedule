@@ -60,13 +60,32 @@
       <span class="tb-clock" id="clockTime">--:--</span>
     </div>
 
-    <div class="search">
-      <input id="search" type="search" inputmode="search" autocomplete="off"
-             placeholder="Станция или вестибюль" aria-label="Поиск станции">
-      <button class="search__clear" id="searchClear" aria-label="Очистить" hidden>×</button>
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab" data-tab="stations" role="tab" aria-selected="true">Станции</button>
+      <button class="tab" data-tab="route" role="tab" aria-selected="false">Маршрут</button>
+    </nav>
+
+    <div id="stationsBar">
+      <div class="search">
+        <input id="search" type="search" inputmode="search" autocomplete="off"
+               placeholder="Станция или вестибюль" aria-label="Поиск станции">
+        <button class="search__clear" id="searchClear" aria-label="Очистить" hidden>×</button>
+      </div>
+      <nav class="lines" id="lineFilter" aria-label="Линии"></nav>
     </div>
 
-    <nav class="lines" id="lineFilter" aria-label="Линии"></nav>
+    <div id="routeBar" hidden>
+      <div class="rb-row">
+        <button class="rb-pick" id="pickFrom" type="button"><span class="rb-pick__lbl">Откуда</span><span class="rb-pick__val" id="fromVal">выберите станцию</span></button>
+        <button class="rb-swap" id="swapBtn" type="button" aria-label="Поменять местами"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v13M7 4l-3 3M7 4l3 3M17 20V7M17 20l3-3M17 20l-3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="rb-pick" id="pickTo" type="button"><span class="rb-pick__lbl">Куда</span><span class="rb-pick__val" id="toVal">выберите станцию</span></button>
+      </div>
+      <div class="rb-times">
+        <label class="rb-time">Перегон <input id="segTime" type="number" min="1" max="20" step="1" value="3" inputmode="numeric"> мин</label>
+        <label class="rb-time">Пересадка <input id="xferTime" type="number" min="1" max="20" step="1" value="3" inputmode="numeric"> мин</label>
+        <button class="rb-clear" id="routeClear" type="button">Сброс</button>
+      </div>
+    </div>
   </header>
 
   <main id="list" class="list" aria-live="polite" aria-busy="true">
@@ -80,6 +99,30 @@
   <section class="minis" id="minis" aria-label="Объявления"></section>
 
   <footer class="foot" id="foot"></footer>
+
+  <!-- Вкладка «Маршрут»: карта метро + планировщик -->
+  <section id="routeView" hidden>
+    <div class="route-itin" id="routeItin"></div>
+    <div class="map-wrap">
+      <div class="map-zoom">
+        <button id="zoomIn" type="button" aria-label="Приблизить">+</button>
+        <button id="zoomOut" type="button" aria-label="Отдалить">−</button>
+        <button id="zoomFit" type="button" aria-label="По размеру">⤢</button>
+      </div>
+      <div class="map-scroll" id="mapScroll"></div>
+    </div>
+    <!-- модальный выбор станции -->
+    <div class="picker" id="picker" hidden>
+      <div class="picker__box">
+        <div class="picker__head">
+          <span id="pickerTitle">Откуда</span>
+          <button class="picker__close" id="pickerClose" aria-label="Закрыть">×</button>
+        </div>
+        <input class="picker__search" id="pickerSearch" type="search" placeholder="Введите станцию" autocomplete="off">
+        <div class="picker__list" id="pickerList"></div>
+      </div>
+    </div>
+  </section>
 
   <div class="theme" role="group" aria-label="Тема оформления">
     <button class="theme__btn" data-theme-set="system">Система</button>
