@@ -8,7 +8,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#ffffff",
+  "background_color": "#204982",
   "theme_color": "#ffffff",
   "categories": [
     "travel",

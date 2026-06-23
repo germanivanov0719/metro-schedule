@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # Иконки приложения из настоящего логотипа Петербургского метрополитена
-# (Spb_metro_logo.svg). Логотип перекрашивается в белый на фирменном красном.
-# SVG рендерится встроенным флэттенером путей (без внешних зависимостей).
+# (Spb_metro_logo.svg): белый логотип на синем фоне со скруглением.
+# SVG растеризуется встроенным флэттенером путей; для чёткости (без «мыла»
+# на macOS) рендерим в 4× и уменьшаем с LANCZOS-сглаживанием.
 import re
 from PIL import Image, ImageDraw
 
-RED = (209, 29, 55)
+BLUE = (32, 73, 130)     # фирменный синий метрополитена
 WHITE = (255, 255, 255)
+SS = 4                   # коэффициент суперсэмплинга
 
 SVG = open('Spb_metro_logo.svg', encoding='utf-8').read()
 PATH = re.search(r'\sd="([^"]+)"', SVG).group(1)
-vb = re.search(r'viewBox="([^"]+)"', SVG).group(1).split()
-VBW, VBH = float(vb[2]), float(vb[3])
 TOKS = re.findall(r'[a-zA-Z]|[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?', PATH)
 
-def _bez(p0, p1, p2, p3, n=48):
+def _bez(p0, p1, p2, p3, n=64):
     out = []
     for k in range(1, n + 1):
         t = k / n; u = 1 - t
@@ -31,8 +31,7 @@ def flatten():
         if re.match(r'[a-zA-Z]', TOKS[i]): cmd = TOKS[i]; i += 1
         rel = cmd.islower(); c = cmd.lower()
         if c == 'm':
-            x = nx(); y = nx(); cur = (cur[0]+x, cur[1]+y) if rel else (x, y)
-            start = cur; pts.append(cur); cmd = 'l' if rel else 'L'; pc2 = None
+            x = nx(); y = nx(); cur = (cur[0]+x, cur[1]+y) if rel else (x, y); start = cur; pts.append(cur); cmd = 'l' if rel else 'L'; pc2 = None
         elif c == 'l':
             x = nx(); y = nx(); cur = (cur[0]+x, cur[1]+y) if rel else (x, y); pts.append(cur); pc2 = None
         elif c == 'h':
@@ -58,30 +57,28 @@ def flatten():
     return pts
 
 PTS = flatten()
+XS = [p[0] for p in PTS]; YS = [p[1] for p in PTS]
+MINX, MAXX, MINY, MAXY = min(XS), max(XS), min(YS), max(YS)
+W, H = MAXX - MINX, MAXY - MINY
 
 def render(size, pad_frac, maskable=False):
-    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    big = size * SS
+    img = Image.new('RGBA', (big, big), (0, 0, 0, 0))
     dr = ImageDraw.Draw(img)
     if maskable:
-        dr.rectangle([0, 0, size-1, size-1], fill=RED)
+        dr.rectangle([0, 0, big, big], fill=BLUE)
     else:
-        dr.rounded_rectangle([0, 0, size-1, size-1], radius=int(size*0.22), fill=RED)
-    avail = size * (1 - 2*pad_frac)
-    s = min(avail/VBW, avail/VBH)
-    ox = (size - VBW*s) / 2; oy = (size - VBH*s) / 2
-    dr.polygon([(ox+x*s, oy+y*s) for (x, y) in PTS], fill=WHITE)
-    return img
+        dr.rounded_rectangle([0, 0, big - 1, big - 1], radius=int(big * 0.22), fill=BLUE)
+    avail = big * (1 - 2 * pad_frac)
+    s = min(avail / W, avail / H)
+    ox = (big - W * s) / 2 - MINX * s
+    oy = (big - H * s) / 2 - MINY * s
+    dr.polygon([(ox + x * s, oy + y * s) for (x, y) in PTS], fill=WHITE)
+    return img.resize((size, size), Image.LANCZOS)
 
-render(192, 0.20).save('icons/icon-192.png')
-render(512, 0.20).save('icons/icon-512.png')
-render(512, 0.30, maskable=True).save('icons/icon-maskable-512.png')
-render(180, 0.20).save('icons/apple-touch-icon.png')
-
-fav = Image.new('RGBA', (32, 32), RED + (255,))
-fd = ImageDraw.Draw(fav)
-avail = 32 * (1 - 2*0.14); s = min(avail/VBW, avail/VBH)
-ox = (32 - VBW*s)/2; oy = (32 - VBH*s)/2
-fd.polygon([(ox+x*s, oy+y*s) for (x, y) in PTS], fill=WHITE)
-fav.save('icons/favicon-32.png')
-
-print('Иконки из настоящего логотипа обновлены.')
+render(192, 0.22).save('icons/icon-192.png')
+render(512, 0.22).save('icons/icon-512.png')
+render(512, 0.32, maskable=True).save('icons/icon-maskable-512.png')
+render(180, 0.22).save('icons/apple-touch-icon.png')
+render(32, 0.16).save('icons/favicon-32.png')
+print('Иконки обновлены: синий фон, белый логотип, суперсэмплинг 4×.')
