@@ -21,6 +21,10 @@ const ENTRY_SOON = 60;    // мин: «скоро открытие» входа
 const ENTRY_CLOSE_SOON = 30; // мин: «скоро закрытие» — по ПОСЛЕДНЕМУ входу станции
 const FETCH_TIMEOUT = 12000;
 
+// Планировщик маршрута временно отключён (и переключатель вкладок скрыт).
+// Чтобы вернуть функцию: ROUTE_ENABLED = true и убрать hidden у <nav class="tabs">.
+const ROUTE_ENABLED = false;
+
 const PROXIES = [
   (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
   (u) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`,
@@ -836,7 +840,7 @@ function bindStaticEvents() {
     b.addEventListener('click', () => setTheme(b.dataset.themeSet)));
 
   bindSwipe();
-  bindRoute();
+  if (ROUTE_ENABLED) bindRoute();   // планировщик маршрута временно отключён
 }
 
 // Горизонтальный свайп по списку: влево — следующая линия, вправо — предыдущая.
@@ -1151,7 +1155,7 @@ function fillPicker(q) {
 /* ── Вкладки ── */
 
 function showTab(tab) {
-  const route = tab === 'route';
+  const route = ROUTE_ENABLED && tab === 'route';
   document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === tab)));
   el.stationsBar.hidden = route; el.routeBar.hidden = !route;
   el.list.hidden = route; el.minis.hidden = route; el.foot.hidden = route;

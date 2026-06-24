@@ -2,7 +2,7 @@
 // Данные расписания НЕ кэшируются здесь: они живут в localStorage и
 // загружаются приложением напрямую с официального сайта.
 
-const VERSION = 'metro-spb-v12';
+const VERSION = 'metro-spb-v13';
 const FONT_CACHE = 'metro-spb-fonts-v2';
 
 const SHELL = [
